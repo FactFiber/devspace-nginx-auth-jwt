@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-subrequest-auth-jwt-config
+  labels:
+    app: nginx-subrequest-auth-jwt
+data:
+  config.yaml: |
+    validationKeys:
+    - type: ecPublicKey
+      keyFrom:
+        source: env
+        name: JWT_PUBKEY
+    claimsSource: queryString

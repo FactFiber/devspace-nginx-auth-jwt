@@ -1,4 +1,7 @@
 # nginx-subrequest-auth-jwt
+
+Version of [carlpett/nginx-subrequest-auth-jwt](https://github.com/carlpett/nginx-subrequest-auth-jwt) which adds a [devspace configuration file](https://devspace.cloud/docs/cli/what-is-devspace-cli), for easy inclusion as a dependency in devspace projects.
+
 This project implements a simple JWT validation endpoint meant to be used with NGINX's [subrequest authentication](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-subrequest-authentication/), and specifically work well with the Kubernetes [NGINX Ingress Controller](https://github.com/kubernetes/ingress-nginx) external auth annotations.
 
 It validates a JWT token passed in the `Authorization` header against a configured public key, and further validates that the JWT contains appropriate claims.
@@ -38,6 +41,22 @@ claims:
 ```
 
 With this configuration, a JWT will be validated against the given public key, and the claims are then matched against the given structure, meaning there has to be a `group` claim, with either a `developers` or `administrators` value.
+
+### Keys
+
+Keys may be specified inline, as shown above. Alternatively, they may
+be specified in the environment:
+
+```yaml
+validationKeys:
+  - type: ecPublicKey
+    keyFrom:
+      source: env
+      name: SECRET
+```
+The service will read the key from the environment variable `SECRET`.
+
+### Claims
 
 Claims can either be statically set, as in the above example, or passed via query string parameters. The `claimsSource` configuration parameter controls which mode the server operates in, and can be either `static` or `queryString`. Further examples of the two modes are given below.
 
@@ -111,3 +130,7 @@ This endpoint exposes [Prometheus](https://prometheus.io) metrics on `/metrics`:
 
 - `http_requests_total{status="<status>"}` number of requests handled, by status code (counter)
 - `nginx_subrequest_auth_jwt_token_validation_time_seconds` number of seconds spent validating tokens (histogram)
+
+# Additional information
+
+* [Useful example from ingress docs](https://github.com/kubernetes/ingress-nginx/blob/master/docs/examples/customization/external-auth-headers/)

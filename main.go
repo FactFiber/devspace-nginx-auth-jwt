@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -65,9 +66,20 @@ func newServer(logger logger.Logger, configFilePath string) (*server, error) {
 	if err != nil {
 		return nil, err
 	}
+	var keyMaterial string
+	if config.ValidationKeys[0].KeyFrom != nil {
+		keyFrom := config.ValidationKeys[0].KeyFrom
+		if keyFrom.Source != "env" {
+			return nil, fmt.Errorf(
+				"keyFrom source unknown: %s", keyFrom.Source)
+		}
+		keyMaterial = os.Getenv(keyFrom.Name)
+	} else {
+		keyMaterial = config.ValidationKeys[0].KeyMaterial
+	}
 
 	// TODO: Only supports a single EC PubKey for now
-	pubkey, err := jwt.ParseECPublicKeyFromPEM([]byte(config.ValidationKeys[0].KeyMaterial))
+	pubkey, err := jwt.ParseECPublicKeyFromPEM([]byte(keyMaterial))
 	if err != nil {
 		return nil, err
 	}
@@ -89,8 +101,15 @@ func newServer(logger logger.Logger, configFilePath string) (*server, error) {
 }
 
 type validationKey struct {
-	Type        string `yaml:"type"`
-	KeyMaterial string `yaml:"key"`
+	Type        string     `yaml:"type"`
+	KeyMaterial string     `yaml:"key,omitempty"`
+	KeyFrom     *keySource `yaml:"keyFrom,omitempty"`
+}
+
+type keySource struct {
+	Source string `yaml:"source"`
+	Name   string `yaml:"name"`
+	Value  string `yaml:"-"`
 }
 
 type config struct {

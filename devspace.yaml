@@ -1,0 +1,57 @@
+version: v1beta6
+vars:
+- name: DEVELOPER
+  question: "Developer name for dev image tagging?"
+
+images:
+  nginx-subrequest-auth-jwt:
+    image: factfiber/nginx-subrequest-auth-jwt
+    tag: ${DEVSPACE_GIT_COMMIT}-${DEVELOPER}-${DEVSPACE_RANDOM}
+    dockerfile: ./Dockerfile
+    context: ./
+
+deployments:
+- name: nginx-subrequest-auth-jwt
+  helm:
+    chart:
+      name: ./helm/envquery
+    values:
+      existingSecret:
+        name: django-config
+        key: django_jwt_pub
+      containers:
+        image: factfiber/nginx-subrequest-auth-jwt
+        env:
+        - name: JWT_PUBKEY
+          valueFrom:
+            secretKeyRef:
+              name: django-config
+              key: django_jwt_pub
+
+profiles:
+- name: dev
+  patches:
+  - op: add
+    path: deployments[-]
+    value:
+      name: demo-echo-service
+      helm:
+        # componentChart: true
+        chart:
+          name: component-chart
+          version: v0.1.3
+          repo: https://charts.devspace.sh
+        values:
+          containers:
+          - image: electroma/ingress-demo-echosvc-amd64:0.1
+          service:
+            ports:
+            - port: 80
+              containerPort: 8080
+          ingress:
+            rules:
+            - host: dev.cranedata.com
+              path: /echo
+            annotations:
+              nginx.ingress.kubernetes.io/auth-url: http://demo-auth-service.crane_web.svc.cluster.local
+              nginx.ingress.kubernetes.io/auth-response-headers: UserID, UserRole
