@@ -2,6 +2,8 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -49,11 +51,12 @@ func init() {
 }
 
 type server struct {
-	PublicKey    *ecdsa.PublicKey
-	Logger       logger.Logger
-	ClaimsSource string
-	StaticClaims []map[string][]string
-	CookieNames  []string
+	PublicKey       *ecdsa.PublicKey
+	Logger          logger.Logger
+	ClaimsSource    string
+	StaticClaims    []map[string][]string
+	CookieNames     []string
+	ResponseHeaders map[string]string
 }
 
 func newServer(logger logger.Logger, configFilePath string) (*server, error) {
@@ -94,11 +97,12 @@ func newServer(logger logger.Logger, configFilePath string) (*server, error) {
 	}
 
 	return &server{
-		PublicKey:    pubkey,
-		Logger:       logger,
-		ClaimsSource: config.ClaimsSource,
-		StaticClaims: config.StaticClaims,
-		CookieNames:  config.CookieNames,
+		PublicKey:       pubkey,
+		Logger:          logger,
+		ClaimsSource:    config.ClaimsSource,
+		StaticClaims:    config.StaticClaims,
+		CookieNames:     config.CookieNames,
+		ResponseHeaders: config.ResponseHeaders,
 	}, nil
 }
 
@@ -115,10 +119,11 @@ type keySource struct {
 }
 
 type config struct {
-	ValidationKeys []validationKey       `yaml:"validationKeys"`
-	ClaimsSource   string                `yaml:"claimsSource"`
-	StaticClaims   []map[string][]string `yaml:"claims"`
-	CookieNames    []string              `yaml:"cookieNames"`
+	ValidationKeys  []validationKey       `yaml:"validationKeys"`
+	ClaimsSource    string                `yaml:"claimsSource"`
+	StaticClaims    []map[string][]string `yaml:"claims"`
+	CookieNames     []string              `yaml:"cookieNames"`
+	ResponseHeaders map[string]string     `yaml:"responseHeaders"`
 }
 
 var (
@@ -198,17 +203,21 @@ func (s *server) validate(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !s.validateDeviceToken(r) {
+	claims, ok := s.validateDeviceToken(r)
+	if !ok {
 		requestsTotal.WithLabelValues("401").Inc()
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	requestsTotal.WithLabelValues("200").Inc()
+	s.writeResponseHeaders(w, claims)
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *server) validateDeviceToken(r *http.Request) bool {
+func (s *server) validateDeviceToken(
+	r *http.Request,
+) (claims jwt.MapClaims, ok bool) {
 	t := time.Now()
 	defer validationTime.Observe(time.Since(t).Seconds())
 
@@ -216,7 +225,6 @@ func (s *server) validateDeviceToken(r *http.Request) bool {
 	var extractor = request.MultiExtractor{
 		&xCookie,
 		request.AuthorizationHeaderExtractor}
-	var claims jwt.MapClaims
 	token, err := request.ParseFromRequest(
 		r, extractor,
 		func(token *jwt.Token) (interface{}, error) {
@@ -228,26 +236,30 @@ func (s *server) validateDeviceToken(r *http.Request) bool {
 		}, request.WithClaims(&claims))
 	if err != nil {
 		s.Logger.Debugw("Failed to parse token", "err", err)
-		return false
+		return nil, false
 	}
 	if !token.Valid {
 		s.Logger.Debugw("Invalid token", "token", token.Raw)
-		return false
+		return nil, false
 	}
 	if err := claims.Valid(); err != nil {
 		s.Logger.Debugw("Got invalid claims", "err", err)
-		return false
+		return nil, false
 	}
 
 	switch s.ClaimsSource {
 	case claimsSourceStatic:
-		return s.staticClaimValidator(claims)
+		ok = s.staticClaimValidator(claims)
 	case claimsSourceQueryString:
-		return s.queryStringClaimValidator(claims, r)
+		ok = s.queryStringClaimValidator(claims, r)
 	default:
 		s.Logger.Errorw("Configuration error: Unhandled claims source", "claimsSource", s.ClaimsSource)
-		return false
+		return nil, false
 	}
+	if !ok {
+		return nil, false
+	}
+	return claims, true
 }
 
 // CookieExtractor is list of cookies to look for token in.
@@ -352,6 +364,34 @@ func (s *server) checkClaim(
 		return false
 	}
 	return true
+}
+
+func (s *server) writeResponseHeaders(
+	w *statusWriter, claims jwt.MapClaims,
+) {
+	s.Logger.Debugw("responseHeaders", "rh", s.ResponseHeaders)
+	if s.ResponseHeaders == nil {
+		return
+	}
+	for header, claimName := range s.ResponseHeaders {
+		claim, ok := claims[claimName]
+		if !ok {
+			continue
+		}
+		var toClaim []byte
+		if sClaim, ok := claim.(string); ok {
+			toClaim = ([]byte)(sClaim)
+		} else {
+			var err error
+			toClaim, err = json.Marshal(claim)
+			if err != nil {
+				continue
+			}
+		}
+		encClaim := base64.StdEncoding.EncodeToString(toClaim)
+		s.Logger.Debugw("add response header", "header", header, "claim", claim, "encClaim", encClaim)
+		w.Header().Add(header, encClaim)
+	}
 }
 
 func contains(haystack []string, needle string) bool {

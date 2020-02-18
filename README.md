@@ -138,6 +138,14 @@ This endpoint exposes [Prometheus](https://prometheus.io) metrics on `/metrics`:
 - `http_requests_total{status="<status>"}` number of requests handled, by status code (counter)
 - `nginx_subrequest_auth_jwt_token_validation_time_seconds` number of seconds spent validating tokens (histogram)
 
+# Response headers
+
+To include fields from claims in response headers, use the `responseHeaders` configuration section. It should consist of a map
+of response header to claim name. Headers will be included with
+base64 encoding of the claim. If the actual claim is a string,
+this will be directly encoded. If the claim is an array of strings,
+this will first be json encoded, then base64 encoded.
+
 # Additional information
 
 * [Useful example from ingress docs](https://github.com/kubernetes/ingress-nginx/blob/master/docs/examples/customization/external-auth-headers/)

@@ -10,4 +10,10 @@ spec:
   containers:
     - name: auth
       image: "{{ .Values.image.repository }}-test-auth"
+      env:
+      - name: JWT_PUBKEY
+        valueFrom:
+          secretKeyRef:
+            name: django-config
+            key: django_jwt_pub
   restartPolicy: Never

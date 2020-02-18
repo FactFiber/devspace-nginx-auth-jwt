@@ -21,16 +21,17 @@ def get_expires(hours = None):
     return now + datetime.timedelta(hours = hours)
 
 if __name__ == '__main__':
-    user_id = sys.argv[1]
+    user_id = sys.argv[2]
     permissions = [
-        s.split("=") for s in sys.argv[2:]]
-    options = {}
-    for key, val in permissions:
-      options.setdefault(key, []).append(val)
-
+        s.split("=") for s in sys.argv[3:]]
+    options = dict(user_id = user_id)
     expires_hours = None
-    if 'expires' in permissions:
-        expires_hours = float(permissions.pop('expires'))
+    for key, val in permissions:
+        if key == 'expires':
+            expires_hours = float(val)
+        else:
+            options.setdefault(key, []).append(val)
+
     jwt = create_key(
         expires_hours = expires_hours, **options)
     print(jwt)

@@ -63,7 +63,7 @@ profiles:
             - host: dev.cranedata.com
               path: /echo
             annotations:
-              nginx.ingress.kubernetes.io/auth-url: http://nginx-auth-jwt.crane_web.svc.cluster.local
+              nginx.ingress.kubernetes.io/auth-url: http://nginx-auth-jwt.crane-web.svc.cluster.local:8080/validate?claims_permissions=ok
               nginx.ingress.kubernetes.io/auth-response-headers: UserID, UserRole
   - op: add
     path: deployments[-]
@@ -78,6 +78,8 @@ profiles:
   - op: add
     path: deployments[0].helm.values.containerArgs[-]
     value: debug
+
+  # add image to test auth, which is used in helm test hook
   - op: add
     path: images.nginx-auth-jwt-test-auth
     value:
