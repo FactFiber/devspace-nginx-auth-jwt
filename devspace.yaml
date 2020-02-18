@@ -1,12 +1,12 @@
 version: v1beta6
 vars:
-- name: DEVELOPER
+- name: USER
   question: "Developer name for dev image tagging?"
 
 images:
   nginx-auth-jwt:
     image: factfiber/nginx-auth-jwt
-    tag: ${DEVSPACE_GIT_COMMIT}-${DEVELOPER}-${DEVSPACE_RANDOM}
+    # tag: ${DEVSPACE_GIT_COMMIT}-${USER}-${DEVSPACE_RANDOM}
     dockerfile: ./Dockerfile
     context: ./
 
@@ -63,7 +63,7 @@ profiles:
             - host: dev.cranedata.com
               path: /echo
             annotations:
-              nginx.ingress.kubernetes.io/auth-url: http://demo-auth-service.crane_web.svc.cluster.local
+              nginx.ingress.kubernetes.io/auth-url: http://nginx-auth-jwt.crane_web.svc.cluster.local
               nginx.ingress.kubernetes.io/auth-response-headers: UserID, UserRole
   - op: add
     path: deployments[-]
