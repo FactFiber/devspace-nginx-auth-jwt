@@ -12,3 +12,5 @@ data:
         source: env
         name: JWT_PUBKEY
     claimsSource: queryString
+    cookieNames:
+    - crane-jwt

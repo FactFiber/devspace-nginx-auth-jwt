@@ -78,3 +78,9 @@ affinity: {}
 existingSecret:
   name:
   key:
+
+containerArgs: 
+- "--insecure"
+        # - --insecure
+        # - --log-level
+        # - debug

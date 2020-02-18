@@ -53,6 +53,7 @@ type server struct {
 	Logger       logger.Logger
 	ClaimsSource string
 	StaticClaims []map[string][]string
+	CookieNames  []string
 }
 
 func newServer(logger logger.Logger, configFilePath string) (*server, error) {
@@ -97,6 +98,7 @@ func newServer(logger logger.Logger, configFilePath string) (*server, error) {
 		Logger:       logger,
 		ClaimsSource: config.ClaimsSource,
 		StaticClaims: config.StaticClaims,
+		CookieNames:  config.CookieNames,
 	}, nil
 }
 
@@ -116,6 +118,7 @@ type config struct {
 	ValidationKeys []validationKey       `yaml:"validationKeys"`
 	ClaimsSource   string                `yaml:"claimsSource"`
 	StaticClaims   []map[string][]string `yaml:"claims"`
+	CookieNames    []string              `yaml:"cookieNames"`
 }
 
 var (
@@ -188,7 +191,8 @@ func (s *server) validate(rw http.ResponseWriter, r *http.Request) {
 		s.Logger.Debugw("Handled validation request", "url", r.URL, "status", w.status, "method", r.Method, "userAgent", r.UserAgent())
 	}()
 
-	if r.Method != http.MethodGet {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		s.Logger.Infow("Invalid method", "method", r.Method)
 		requestsTotal.WithLabelValues("405").Inc()
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -208,14 +212,20 @@ func (s *server) validateDeviceToken(r *http.Request) bool {
 	t := time.Now()
 	defer validationTime.Observe(time.Since(t).Seconds())
 
+	var xCookie = CookieExtractor(s.CookieNames)
+	var extractor = request.MultiExtractor{
+		&xCookie,
+		request.AuthorizationHeaderExtractor}
 	var claims jwt.MapClaims
-	token, err := request.ParseFromRequestWithClaims(r, request.AuthorizationHeaderExtractor, &claims, func(token *jwt.Token) (interface{}, error) {
-		// TODO: Only supports EC for now
-		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-		return s.PublicKey, nil
-	})
+	token, err := request.ParseFromRequest(
+		r, extractor,
+		func(token *jwt.Token) (interface{}, error) {
+			// TODO: Only supports EC for now
+			if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
+				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			}
+			return s.PublicKey, nil
+		}, request.WithClaims(&claims))
 	if err != nil {
 		s.Logger.Debugw("Failed to parse token", "err", err)
 		return false
@@ -240,13 +250,30 @@ func (s *server) validateDeviceToken(r *http.Request) bool {
 	}
 }
 
+// CookieExtractor is list of cookies to look for token in.
+type CookieExtractor []string
+
+// ExtractToken returns token in matching cookie.
+// implements request.Extractor interface
+func (x *CookieExtractor) ExtractToken(
+	req *http.Request,
+) (string, error) {
+	for _, cookie := range req.Cookies() {
+		if contains(([]string)(*x), cookie.Name) {
+			return cookie.Value, nil
+		}
+	}
+	return "", request.ErrNoTokenInRequest
+}
+
 func (s *server) staticClaimValidator(claims jwt.MapClaims) bool {
 	var valid bool
 	for _, claimSet := range s.StaticClaims {
 		valid = true
 		for claimName, validValues := range claimSet {
-			if !contains(validValues, claims[claimName].(string)) {
+			if !s.checkClaim(claimName, validValues, claims) {
 				valid = false
+				break
 			}
 		}
 		if valid {
@@ -275,10 +302,15 @@ func (s *server) queryStringClaimValidator(claims jwt.MapClaims, r *http.Request
 	s.Logger.Debugw("Validating claims from query string", "validClaims", validClaims)
 
 	passedValidation := true
-	for claimName, validValues := range validClaims {
-		actual, ok := claims[strings.TrimPrefix(claimName, "claims_")].(string)
-		if !ok || !contains(validValues, actual) {
-			passedValidation = false
+	for claimNameQ, validValues := range validClaims {
+		if strings.HasPrefix(claimNameQ, "claims_") {
+			claimName := strings.TrimPrefix(claimNameQ, "claims_")
+			s.Logger.Debugw("CLAIM", "claim", claimName, "vv", validValues,
+				"qd", validClaims)
+			if !s.checkClaim(claimName, validValues, claims) {
+				passedValidation = false
+				break
+			}
 		}
 	}
 
@@ -286,6 +318,40 @@ func (s *server) queryStringClaimValidator(claims jwt.MapClaims, r *http.Request
 		s.Logger.Debugw("Token claims did not match required values", "validClaims", validClaims, "actualClaims", claims)
 	}
 	return passedValidation
+}
+
+func (s *server) checkClaim(
+	claimName string, validValues []string, claims jwt.MapClaims,
+) bool {
+	actual, ok := claims[claimName].(string)
+	if !ok {
+		actualList, ok := claims[claimName].([]interface{})
+		if !ok {
+			s.Logger.Infow(
+				"Claims list unknown structure", "claims",
+				fmt.Sprintf("%+v", claims))
+			return false
+		}
+		found := false
+		for _, actual := range actualList {
+			if contains(validValues, actual.(string)) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.Logger.Debugw(
+				"Rejecting claim", "claimName", claimName,
+				"validValues", validValues, "actual", actualList)
+			return false
+		}
+	} else if !contains(validValues, actual) {
+		s.Logger.Debugw(
+			"Rejecting claim", "claimName", claimName,
+			"validValues", validValues, "actual", actual)
+		return false
+	}
+	return true
 }
 
 func contains(haystack []string, needle string) bool {

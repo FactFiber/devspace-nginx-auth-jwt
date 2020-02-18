@@ -56,9 +56,16 @@ validationKeys:
 ```
 The service will read the key from the environment variable `SECRET`.
 
-### Claims
+### Required claims
 
-Claims can either be statically set, as in the above example, or passed via query string parameters. The `claimsSource` configuration parameter controls which mode the server operates in, and can be either `static` or `queryString`. Further examples of the two modes are given below.
+The body of the jwt contains claims, either in the form `foo: bar` (string claim) or `foo: [bar1, bar2]` (array of string claim). Jwt validation checks the actual claims against required claims. Required claims required can either be statically set, as in the above example, or passed via query string parameters. The `claimsSource` configuration parameter controls which mode the server operates in, and can be either `static` or `queryString`. Further examples of the two modes are given below.
+
+In either case, the required claims are pairs `key=value`. In
+the case of duplicate keys, the actual claims must have all values.
+In the case of multiple keys, the actual claims must match the
+claim in one key group. To match, for string claims, the actual
+value must be an exact match with the required value. For array of
+string claims, the array must contain the matching element.
 
 ### Static
 

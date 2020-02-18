@@ -1,0 +1,57 @@
+# shelltest tests of call to auth
+#
+# pass "DOMAIN" for name of domain.
+
+# bearer: basic
+$ foo=$(pipenv run gen1m foo=bar); curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $foo" DOMAIN/PREFIXvalidate?claims_foo=bar
+> /200/
+>= 0
+#
+# pass "DOMAIN" for name of domain.
+
+# bearer: no match
+$ foo=$(pipenv run gen1m foo=bat); curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $foo" DOMAIN/PREFIXvalidate?claims_foo=bar
+> /401/
+>= 0
+#
+# pass "DOMAIN" for name of domain.
+
+# bearer: first match
+$ foo=$(pipenv run gen1m foo=bat); curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $foo" 'DOMAIN/PREFIXvalidate?claims_foo=bat&claims_foo=bar'
+> /200/
+>= 0
+#
+# pass "DOMAIN" for name of domain.
+
+# bearer: 2nd match
+$ foo=$(pipenv run gen1m foo=bar); curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $foo" 'DOMAIN/PREFIXvalidate?claims_foo=bat&claims_foo=bar'
+> /200/
+>= 0
+#
+# pass "DOMAIN" for name of domain.
+
+# bearer: two claims -- match two different sets
+$ foo=$(pipenv run gen1m foo=bar far=boo); curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $foo" 'DOMAIN/PREFIXvalidate?claims_foo=bar&claims_far=boo'
+> /200/
+>= 0
+#
+# pass "DOMAIN" for name of domain.
+
+# bearer: two claims -- fail first
+$ foo=$(pipenv run gen1m foo=bar far=boo); curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $foo" 'DOMAIN/PREFIXvalidate?claims_foo=bat&claims_far=boo'
+> /401/
+>= 0
+#
+# pass "DOMAIN" for name of domain.
+
+# bearer: two claims -- fail second
+$ foo=$(pipenv run gen1m foo=bar far=boo); curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $foo" 'DOMAIN/PREFIXvalidate?claims_foo=bat&claims_far=bot'
+> /401/
+>= 0
+#
+# pass "DOMAIN" for name of domain.
+
+# cookie: basic
+$ foo=$(pipenv run gen1m foo=bar); curl -s -o /dev/null -w "%{http_code}" --cookie "crane-jwt=$foo" DOMAIN/PREFIXvalidate?claims_foo=bar
+> /200/
+>= 0

@@ -14,19 +14,29 @@ deployments:
 - name: nginx-subrequest-auth-jwt
   helm:
     chart:
-      name: ./helm/envquery
+      name: ./helm
     values:
       existingSecret:
         name: django-config
         key: django_jwt_pub
-      containers:
-        image: factfiber/nginx-subrequest-auth-jwt
-        env:
-        - name: JWT_PUBKEY
-          valueFrom:
-            secretKeyRef:
-              name: django-config
-              key: django_jwt_pub
+      containerArgs:
+      - --insecure
+      # containers:
+      #   image: factfiber/nginx-subrequest-auth-jwt
+      #   env:
+      #   - name: JWT_PUBKEY
+      #     valueFrom:
+      #       secretKeyRef:
+      #         name: django-config
+      #         key: django_jwt_pub
+      ingress:
+        enabled: true
+        annotations:
+          kubernetes.io/ingress.class: nginx
+          nginx.ingress.kubernetes.io/rewrite-target: "/$1"
+        hosts:
+        - host: dev.cranedata.com
+          paths: [ '/auth/(.*)' ]
 
 profiles:
 - name: dev
@@ -55,3 +65,23 @@ profiles:
             annotations:
               nginx.ingress.kubernetes.io/auth-url: http://demo-auth-service.crane_web.svc.cluster.local
               nginx.ingress.kubernetes.io/auth-response-headers: UserID, UserRole
+  - op: add
+    path: deployments[-]
+    value:
+      name: test-config
+      kubectl:
+        manifests:
+        - ./test/auth-configmap.yaml
+  - op: add
+    path: deployments[0].helm.values.containerArgs[-]
+    value: --log-level
+  - op: add
+    path: deployments[0].helm.values.containerArgs[-]
+    value: debug
+  - op: add
+    path: images.nginx-subrequest-auth-jwt-test-auth
+    value:
+      image: factfiber/nginx-subrequest-auth-jwt-test-auth
+      tag: ${DEVSPACE_GIT_COMMIT}-${DEVELOPER}-${DEVSPACE_RANDOM}
+      dockerfile: ./test/genjwt/Dockerfile
+      context: ./test/genjwt

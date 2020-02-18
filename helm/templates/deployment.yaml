@@ -28,7 +28,7 @@ spec:
         image: "{{ .Values.image.repository }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
-        - --insecure
+          {{- toYaml .Values.containerArgs | nindent 8 }}
         env:
         - name: JWT_PUBKEY
           valueFrom:
