@@ -211,7 +211,7 @@ func (s *server) validate(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	requestsTotal.WithLabelValues("200").Inc()
-	s.writeResponseHeaders(w, claims)
+	s.writeResponseHeaders(w, r, claims)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -367,8 +367,15 @@ func (s *server) checkClaim(
 }
 
 func (s *server) writeResponseHeaders(
-	w *statusWriter, claims jwt.MapClaims,
+	w *statusWriter, r *http.Request, claims jwt.MapClaims,
 ) {
+	parameters := r.URL.Query()
+	for key, value := range parameters {
+		if strings.HasPrefix(key, "responses_") {
+			header := strings.TrimPrefix(key, "responses_")
+			s.ResponseHeaders[header] = value[0]
+		}
+	}
 	s.Logger.Debugw("responseHeaders", "rh", s.ResponseHeaders)
 	if s.ResponseHeaders == nil {
 		return

@@ -146,6 +146,10 @@ base64 encoding of the claim. If the actual claim is a string,
 this will be directly encoded. If the claim is an array of strings,
 this will first be json encoded, then base64 encoded.
 
+Response headers can also be configured via the query. Use a query
+parameter of the form `responses_foo=bar` to encode claims "bar"
+in response header "foo".
+
 # Additional information
 
 * [Useful example from ingress docs](https://github.com/kubernetes/ingress-nginx/blob/master/docs/examples/customization/external-auth-headers/)
