@@ -1,7 +1,12 @@
-FROM debian:buster
+FROM ubuntu:bionic
 
-RUN apt-get -qq update && apt-get install -y shelltestrunner pipenv
+RUN apt-get -qq update && apt install -y shelltestrunner \
+    software-properties-common
+RUN apt-get -qq update && apt install -y software-properties-common \
+  && add-apt-repository ppa:deadsnakes/ppa \
+  && apt install -y python3.8 \
+  && apt install pipenv
 
 COPY . .
 RUN pipenv install
-CMD shelltest -D DOMAIN=nginx-subrequest-auth-jwt:8080 -D PREFIX=/ auth.test
+CMD shelltest -D DOMAIN=nginx-auth-jwt:8080 -D PREFIX=/ auth.test

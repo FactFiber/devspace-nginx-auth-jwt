@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/carlpett/nginx-subrequest-auth-jwt/logger"
+	"github.com/carlpett/nginx-auth-jwt/logger"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"

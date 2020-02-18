@@ -1,6 +1,6 @@
-# nginx-subrequest-auth-jwt
+# nginx-auth-jwt
 
-Version of [carlpett/nginx-subrequest-auth-jwt](https://github.com/carlpett/nginx-subrequest-auth-jwt) which adds a [devspace configuration file](https://devspace.cloud/docs/cli/what-is-devspace-cli), for easy inclusion as a dependency in devspace projects.
+Version of [carlpett/nginx-auth-jwt](https://github.com/carlpett/nginx-auth-jwt) which adds a [devspace configuration file](https://devspace.cloud/docs/cli/what-is-devspace-cli), for easy inclusion as a dependency in devspace projects.
 
 This project implements a simple JWT validation endpoint meant to be used with NGINX's [subrequest authentication](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-subrequest-authentication/), and specifically work well with the Kubernetes [NGINX Ingress Controller](https://github.com/kubernetes/ingress-nginx) external auth annotations.
 
@@ -121,13 +121,13 @@ If no claims are passed in this mode, the request will be denied.
 To use with the NGINX Ingress Controller, first create a deployment and a service for this endpoint. See the [kubernetes/](kubernetes/) directory for example manifests. Then on the ingress object you wish to authenticate, add this annotation for a server in static claims source mode:
 
 ```yaml
-nginx.ingress.kubernetes.io/auth-url: https://nginx-subrequest-auth-jwt.default.svc.cluster.local:8443/validate
+nginx.ingress.kubernetes.io/auth-url: https://nginx-auth-jwt.default.svc.cluster.local:8443/validate
 ```
 
 Or, in query string mode:
 
 ```yaml
-nginx.ingress.kubernetes.io/auth-url: https://nginx-subrequest-auth-jwt.default.svc.cluster.local:8443/validate?claims_group=developers
+nginx.ingress.kubernetes.io/auth-url: https://nginx-auth-jwt.default.svc.cluster.local:8443/validate?claims_group=developers
 ```
 
 Change the url to match the name of the service and namespace you chose when deploying. All requests will now have their JWTs validated before getting passed to the upstream service.

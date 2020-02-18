@@ -8,6 +8,6 @@ RUN CGO_ENABLED=0 go build -mod=readonly
 # TODO: security issue with mount
 # FROM gcr.io/distroless/static:nonroot
 FROM alpine:3.11
-COPY --from=build /src/nginx-subrequest-auth-jwt /
-ENTRYPOINT ["/nginx-subrequest-auth-jwt"]
+COPY --from=build /src/nginx-auth-jwt /
+ENTRYPOINT ["/nginx-auth-jwt"]
 # ENTRYPOINT ["/usr/bin/tail", "-f", "/dev/null"]

@@ -5,12 +5,12 @@
 replicaCount: 1
 
 image:
-  repository: factfiber/nginx-subrequest-auth-jwt
+  repository: factfiber/nginx-auth-jwt
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
-nameOverride: "nginx-subrequest-auth-jwt"
-fullnameOverride: "nginx-subrequest-auth-jwt"
+nameOverride: "nginx-auth-jwt"
+fullnameOverride: "nginx-auth-jwt"
 
 serviceAccount:
   # Specifies whether a service account should be created

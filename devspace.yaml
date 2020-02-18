@@ -4,14 +4,14 @@ vars:
   question: "Developer name for dev image tagging?"
 
 images:
-  nginx-subrequest-auth-jwt:
-    image: factfiber/nginx-subrequest-auth-jwt
+  nginx-auth-jwt:
+    image: factfiber/nginx-auth-jwt
     tag: ${DEVSPACE_GIT_COMMIT}-${DEVELOPER}-${DEVSPACE_RANDOM}
     dockerfile: ./Dockerfile
     context: ./
 
 deployments:
-- name: nginx-subrequest-auth-jwt
+- name: nginx-auth-jwt
   helm:
     chart:
       name: ./helm
@@ -22,7 +22,7 @@ deployments:
       containerArgs:
       - --insecure
       # containers:
-      #   image: factfiber/nginx-subrequest-auth-jwt
+      #   image: factfiber/nginx-auth-jwt
       #   env:
       #   - name: JWT_PUBKEY
       #     valueFrom:
@@ -79,9 +79,9 @@ profiles:
     path: deployments[0].helm.values.containerArgs[-]
     value: debug
   - op: add
-    path: images.nginx-subrequest-auth-jwt-test-auth
+    path: images.nginx-auth-jwt-test-auth
     value:
-      image: factfiber/nginx-subrequest-auth-jwt-test-auth
+      image: factfiber/nginx-auth-jwt-test-auth
       tag: ${DEVSPACE_GIT_COMMIT}-${DEVELOPER}-${DEVSPACE_RANDOM}
       dockerfile: ./test/genjwt/Dockerfile
       context: ./test/genjwt
