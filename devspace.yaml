@@ -9,6 +9,9 @@ images:
     # tag: ${DEVSPACE_GIT_COMMIT}-${USER}-${DEVSPACE_RANDOM}
     dockerfile: ./Dockerfile
     context: ./
+    build:
+      docker:
+        useBuildKit: true
 
 deployments:
 - name: nginx-auth-jwt
@@ -21,26 +24,21 @@ deployments:
         key: django_jwt_pub
       containerArgs:
       - --insecure
-      # containers:
-      #   image: factfiber/nginx-auth-jwt
-      #   env:
-      #   - name: JWT_PUBKEY
-      #     valueFrom:
-      #       secretKeyRef:
-      #         name: django-config
-      #         key: django_jwt_pub
-      ingress:
-        enabled: true
-        annotations:
-          kubernetes.io/ingress.class: nginx
-          nginx.ingress.kubernetes.io/rewrite-target: "/$1"
-        hosts:
-        - host: dev.cranedata.com
-          paths: [ '/auth/(.*)' ]
 
 profiles:
 - name: dev
   patches:
+
+  # increase log level to debug in auth container
+  - op: add
+    path: deployments[0].helm.values.containerArgs[-]
+    value: --log-level
+  - op: add
+    path: deployments[0].helm.values.containerArgs[-]
+    value: debug
+
+
+  # add demo service for testing purposes
   - op: add
     path: deployments[-]
     value:
@@ -72,12 +70,20 @@ profiles:
       kubectl:
         manifests:
         - ./test/auth-configmap.yaml
+
+  # add ingress for testing purposes
   - op: add
-    path: deployments[0].helm.values.containerArgs[-]
-    value: --log-level
-  - op: add
-    path: deployments[0].helm.values.containerArgs[-]
-    value: debug
+    path: deployments[0].helm.values
+    value:
+      ingress:
+        enabled: true
+        annotations:
+          kubernetes.io/ingress.class: nginx
+          nginx.ingress.kubernetes.io/rewrite-target: "/$1"
+        hosts:
+        - host: dev.cranedata.com
+          paths: [ '/auth/(.*)' ]
+
 
   # add image to test auth, which is used in helm test hook
   - op: add
@@ -87,3 +93,6 @@ profiles:
       # tag: ${DEVSPACE_GIT_COMMIT}-${DEVELOPER}-${DEVSPACE_RANDOM}
       dockerfile: ./test/genjwt/Dockerfile
       context: ./test/genjwt
+      build:
+        docker:
+          useBuildKit: true
