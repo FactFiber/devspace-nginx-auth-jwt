@@ -3,3 +3,6 @@ helm/
 kubernetes/
 .devspace/
 .github/
+devspace.yaml
+Readme.md
+Dockerfile
