@@ -1,6 +1,23 @@
 # nginx-auth-jwt
 
+## Devspace support
+
 Version of [carlpett/nginx-auth-jwt](https://github.com/carlpett/nginx-auth-jwt) which adds a [devspace configuration file](https://devspace.cloud/docs/cli/what-is-devspace-cli), for easy inclusion as a dependency in devspace projects.
+
+**Not production-ready**
+
+Currently, the deployment depends on a config map 
+(nginx-auth-jwt-config), which is not installed. A sample can be found
+in test/auth-configmap.yaml. If you are using this repo as a 
+devspace dependency, you will want to install your own configmap
+alongside the dependency. The content of the configmap is the file
+`config.yaml`, which is decribed below.
+
+There are some testing resources included: a test ingres for the auth
+service is included, as is a test echo service. These are specific to 
+the particular use case. Adaptation will be needed to generalize.
+
+## Overview
 
 This project implements a simple JWT validation endpoint meant to be used with NGINX's [subrequest authentication](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-subrequest-authentication/), and specifically work well with the Kubernetes [NGINX Ingress Controller](https://github.com/kubernetes/ingress-nginx) external auth annotations.
 
