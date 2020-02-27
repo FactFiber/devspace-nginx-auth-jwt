@@ -2,6 +2,10 @@ version: v1beta6
 vars:
 - name: USER
   question: "Developer name for dev image tagging?"
+- name: JWT_PUBKEY_SECRET
+  question: "Name of secret in which public key stored?"
+- name: JWT_PUBKEY_KEY
+  question: "Name of key in secret in which public key stored (PEM format)?"
 
 images:
   nginx-auth-jwt:
@@ -20,8 +24,8 @@ deployments:
       name: ./helm
     values:
       existingSecret:
-        name: django-config
-        key: django_jwt_pub
+        name: ${JWT_PUBKEY_KEY}
+        key: ${JWT_PUBLIC_SECRET}
       containerArgs:
       - --insecure
 
@@ -73,16 +77,15 @@ profiles:
 
   # add ingress for testing purposes
   - op: add
-    path: deployments[0].helm.values
+    path: deployments[0].helm.values.ingress
     value:
-      ingress:
-        enabled: true
-        annotations:
-          kubernetes.io/ingress.class: nginx
-          nginx.ingress.kubernetes.io/rewrite-target: "/$1"
-        hosts:
-        - host: dev.cranedata.com
-          paths: [ '/auth/(.*)' ]
+      enabled: true
+      annotations:
+        kubernetes.io/ingress.class: nginx
+        nginx.ingress.kubernetes.io/rewrite-target: "/$1"
+      hosts:
+      - host: dev.cranedata.com
+        paths: [ '/auth/(.*)' ]
 
 
   # add image to test auth, which is used in helm test hook
